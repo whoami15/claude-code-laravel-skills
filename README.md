@@ -17,6 +17,7 @@ Each skill provides focused, practical guidance - complete with real code exampl
 | Skill  | Description |
 |--------|-------------|
 | [saloon-for-laravel](saloon-for-laravel/SKILL.md) | Build elegant API integrations with SaloonPHP - connectors, requests, responses, authentication, testing, pagination, caching, rate limiting, OAuth2, and SDK patterns |
+| [laravel-adjacency-list](laravel-adjacency-list/SKILL.md) | Build recursive tree and graph relationships with Laravel Adjacency List - ancestors, descendants, trees, nested results, depth, paths, cycle detection, and custom relationships |
 
 ## Contributing
 
