@@ -58,14 +58,14 @@ composer require saloonphp/xml-wrangler         # XML reading/writing
 
 ```
 app/Http/Integrations/
-└── GitHub/
-    ├── GitHubConnector.php
+└── Acme/
+    ├── AcmeConnector.php
     ├── Requests/
     │   ├── GetUserRequest.php
-    │   ├── GetReposRequest.php
-    │   └── CreateRepoRequest.php
+    │   ├── ListProjectsRequest.php
+    │   └── CreateProjectRequest.php
     ├── Responses/
-    │   └── GitHubResponse.php
+    │   └── AcmeResponse.php
     └── Data/
         └── UserDTO.php
 ```
@@ -75,19 +75,19 @@ app/Http/Integrations/
 Generate with Artisan:
 
 ```bash
-php artisan saloon:connector GitHub GitHubConnector
+php artisan saloon:connector Acme AcmeConnector
 ```
 
 A connector defines the base URL and shared configuration:
 
 ```php
-namespace App\Http\Integrations\GitHub;
+namespace App\Http\Integrations\Acme;
 
 use Saloon\Http\Connector;
 use Saloon\Traits\Plugins\AcceptsJson;
 use Saloon\Traits\Plugins\AlwaysThrowOnErrors;
 
-class GitHubConnector extends Connector
+class AcmeConnector extends Connector
 {
     use AcceptsJson;
     use AlwaysThrowOnErrors;
@@ -98,7 +98,7 @@ class GitHubConnector extends Connector
 
     public function resolveBaseUrl(): string
     {
-        return 'https://api.github.com';
+        return config('services.acme.base_url');
     }
 
     protected function defaultHeaders(): array
@@ -115,13 +115,13 @@ class GitHubConnector extends Connector
 Generate with Artisan:
 
 ```bash
-php artisan saloon:request GitHub GetUserRequest
+php artisan saloon:request Acme GetUserRequest
 ```
 
 Define the HTTP method and endpoint:
 
 ```php
-namespace App\Http\Integrations\GitHub\Requests;
+namespace App\Http\Integrations\Acme\Requests;
 
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
@@ -151,7 +151,7 @@ use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Traits\Body\HasJsonBody;
 
-class CreateRepoRequest extends Request implements HasBody
+class CreateProjectRequest extends Request implements HasBody
 {
     use HasJsonBody;
 
@@ -164,7 +164,7 @@ class CreateRepoRequest extends Request implements HasBody
 
     public function resolveEndpoint(): string
     {
-        return '/user/repos';
+        return '/projects';
     }
 
     protected function defaultBody(): array
@@ -191,8 +191,8 @@ Available body traits (each requires implementing `HasBody`):
 ## Sending Requests
 
 ```php
-$connector = new GitHubConnector(token: config('services.github.token'));
-$request = new GetUserRequest('sammyjo20');
+$connector = new AcmeConnector(token: config('services.acme.token'));
+$request = new GetUserRequest('johndoe');
 
 $response = $connector->send($request);
 ```
@@ -200,9 +200,9 @@ $response = $connector->send($request);
 Using dependency injection in a controller:
 
 ```php
-class GitHubController extends Controller
+class UserController extends Controller
 {
-    public function show(string $username, GitHubConnector $connector)
+    public function show(string $username, AcmeConnector $connector)
     {
         $response = $connector->send(new GetUserRequest($username));
 
@@ -215,8 +215,8 @@ Register the connector in a service provider for DI:
 
 ```php
 // AppServiceProvider::register()
-$this->app->bind(GitHubConnector::class, function () {
-    return new GitHubConnector(token: config('services.github.token'));
+$this->app->bind(AcmeConnector::class, function () {
+    return new AcmeConnector(token: config('services.acme.token'));
 });
 ```
 
@@ -275,7 +275,7 @@ $connector->authenticate(new HeaderAuthenticator('my-token', 'X-API-Key'));
 ### Default authentication on a connector
 
 ```php
-class GitHubConnector extends Connector
+class AcmeConnector extends Connector
 {
     public function __construct(protected readonly string $token) {}
 
@@ -293,7 +293,7 @@ Use `AlwaysThrowOnErrors` to throw exceptions automatically on failed responses:
 ```php
 use Saloon\Traits\Plugins\AlwaysThrowOnErrors;
 
-class GitHubConnector extends Connector
+class AcmeConnector extends Connector
 {
     use AlwaysThrowOnErrors;
 }
@@ -353,8 +353,8 @@ class GetUserRequest extends Request
 Then use it:
 
 ```php
-$user = $connector->send(new GetUserRequest('sammyjo20'))->dto();
-$user = $connector->send(new GetUserRequest('sammyjo20'))->dtoOrFail();
+$user = $connector->send(new GetUserRequest('johndoe'))->dto();
+$user = $connector->send(new GetUserRequest('johndoe'))->dtoOrFail();
 ```
 
 ## Middleware
@@ -362,7 +362,7 @@ $user = $connector->send(new GetUserRequest('sammyjo20'))->dtoOrFail();
 Add middleware on connectors or requests to modify the request/response pipeline:
 
 ```php
-class GitHubConnector extends Connector
+class AcmeConnector extends Connector
 {
     public function __construct()
     {
@@ -373,7 +373,7 @@ class GitHubConnector extends Connector
 
         // Response middleware
         $this->middleware()->onResponse(function (Response $response) {
-            logger()->info('GitHub API responded', ['status' => $response->status()]);
+            logger()->info('Acme API responded', ['status' => $response->status()]);
         });
     }
 }
@@ -396,7 +396,7 @@ The Laravel plugin provides a `Saloon` facade for fluent test mocking:
 use Saloon\Laravel\Facades\Saloon;
 use Saloon\Http\Faking\MockResponse;
 
-it('fetches user from github', function () {
+it('fetches a user from the API', function () {
     Saloon::fake([
         GetUserRequest::class => MockResponse::make(
             body: ['name' => 'Sam', 'email' => 'sam@example.com'],
@@ -404,7 +404,7 @@ it('fetches user from github', function () {
         ),
     ]);
 
-    $response = $this->get('/api/github/users/sammyjo20');
+    $response = $this->get('/api/users/johndoe');
 
     $response->assertOk();
 
@@ -428,7 +428,7 @@ Saloon::fake([
 
 ```php
 Saloon::assertSent(GetUserRequest::class);
-Saloon::assertSent(fn (Request $request) => $request->resolveEndpoint() === '/users/sammyjo20');
+Saloon::assertSent(fn (Request $request) => $request->resolveEndpoint() === '/users/johndoe');
 Saloon::assertNotSent(DeleteUserRequest::class);
 Saloon::assertSentCount(2);
 Saloon::assertNothingSent();
@@ -449,7 +449,7 @@ Saloon::allowStrayRequests();
 Set retry properties on connectors or requests:
 
 ```php
-class GitHubConnector extends Connector
+class AcmeConnector extends Connector
 {
     protected int $tries = 3;
     protected int $retryInterval = 500;           // milliseconds
@@ -483,7 +483,7 @@ use Saloon\Http\Connector;
 use Saloon\PaginationPlugin\PagedPaginator;
 use Saloon\PaginationPlugin\Contracts\HasPagination;
 
-class GitHubConnector extends Connector implements HasPagination
+class AcmeConnector extends Connector implements HasPagination
 {
     public function paginate(Request $request): PagedPaginator
     {
@@ -506,14 +506,14 @@ class GitHubConnector extends Connector implements HasPagination
 Use the paginator:
 
 ```php
-$paginator = $connector->paginate(new ListReposRequest);
+$paginator = $connector->paginate(new ListProjectsRequest);
 
 foreach ($paginator as $response) {
-    $repos = $response->json('data');
+    $projects = $response->json('data');
 }
 
 // Or collect all items
-$allRepos = $paginator->collect()->all();
+$allProjects = $paginator->collect()->all();
 ```
 
 Available paginator types: `PagedPaginator`, `OffsetPaginator`, `CursorPaginator`.
@@ -535,7 +535,7 @@ use Saloon\RateLimitPlugin\Limit;
 use Saloon\RateLimitPlugin\Stores\LaravelCacheStore;
 use Saloon\RateLimitPlugin\Traits\HasRateLimits;
 
-class GitHubConnector extends Connector
+class AcmeConnector extends Connector
 {
     use HasRateLimits;
 
@@ -595,9 +595,9 @@ use Saloon\Http\Response;
 
 $pool = $connector->pool(
     requests: [
-        new GetUserRequest('sammyjo20'),
-        new GetUserRequest('mpociot'),
-        new GetUserRequest('taylorotwell'),
+        new GetUserRequest('alice'),
+        new GetUserRequest('bob'),
+        new GetUserRequest('charlie'),
     ],
     concurrency: 5,
     responseHandler: function (Response $response, int $key) {
@@ -616,7 +616,7 @@ $pool->send()->wait();
 Create an OAuth2 connector:
 
 ```bash
-php artisan saloon:connector GitHub GitHubOAuthConnector
+php artisan saloon:connector Acme AcmeOAuthConnector
 ```
 
 ```php
@@ -624,23 +624,23 @@ use Saloon\Http\Connector;
 use Saloon\Http\Auth\AccessTokenAuthenticator;
 use Saloon\Traits\OAuth2\AuthorizationCodeGrant;
 
-class GitHubOAuthConnector extends Connector
+class AcmeOAuthConnector extends Connector
 {
     use AuthorizationCodeGrant;
 
     public function resolveBaseUrl(): string
     {
-        return 'https://github.com';
+        return config('services.acme.base_url');
     }
 
     protected function resolveAccessTokenUrl(): string
     {
-        return 'https://github.com/login/oauth/access_token';
+        return config('services.acme.base_url') . '/oauth/token';
     }
 
     protected function resolveAuthorizationUrl(): string
     {
-        return 'https://github.com/login/oauth/authorize';
+        return config('services.acme.base_url') . '/oauth/authorize';
     }
 }
 ```
@@ -649,23 +649,23 @@ Usage in a controller:
 
 ```php
 // Redirect to OAuth provider
-public function redirect(GitHubOAuthConnector $connector)
+public function redirect(AcmeOAuthConnector $connector)
 {
     return $connector->getAuthorizationUrl(
-        scopes: ['user', 'repo'],
+        scopes: ['read', 'write'],
         state: session()->get('state'),
     );
 }
 
 // Handle callback
-public function callback(Request $request, GitHubOAuthConnector $connector)
+public function callback(Request $request, AcmeOAuthConnector $connector)
 {
     $authenticator = $connector->getAccessToken(
         code: $request->query('code'),
     );
 
     // Store for later — use encrypted cast on your model
-    $user->update(['github_token' => $authenticator]);
+    $user->update(['acme_token' => $authenticator]);
 }
 ```
 
@@ -679,7 +679,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'github_token' => EncryptedOAuthAuthenticatorCast::class,
+            'acme_token' => EncryptedOAuthAuthenticatorCast::class,
         ];
     }
 }
@@ -690,21 +690,21 @@ class User extends Authenticatable
 Organize connector methods as a clean SDK interface:
 
 ```php
-class GitHubConnector extends Connector
+class AcmeConnector extends Connector
 {
     public function getUser(string $username): Response
     {
         return $this->send(new GetUserRequest($username));
     }
 
-    public function listRepos(string $username): Response
+    public function listProjects(string $username): Response
     {
-        return $this->send(new ListReposRequest($username));
+        return $this->send(new ListProjectsRequest($username));
     }
 
-    public function createRepo(string $name, bool $private = false): Response
+    public function createProject(string $name, bool $private = false): Response
     {
-        return $this->send(new CreateRepoRequest($name, $private));
+        return $this->send(new CreateProjectRequest($name, $private));
     }
 }
 ```
@@ -712,10 +712,10 @@ class GitHubConnector extends Connector
 Usage becomes expressive:
 
 ```php
-$github = new GitHubConnector(token: config('services.github.token'));
+$acme = new AcmeConnector(token: config('services.acme.token'));
 
-$user = $github->getUser('sammyjo20')->dto();
-$repos = $github->listRepos('sammyjo20')->collect('data');
+$user = $acme->getUser('johndoe')->dto();
+$projects = $acme->listProjects('johndoe')->collect('data');
 ```
 
 ## Telescope & Pulse Integration
