@@ -1,5 +1,5 @@
 ---
-name: Saloon for Laravel
+name: saloon-for-laravel
 description: Use Saloon to build elegant API integrations in modern Laravel applications, including connectors, requests, responses, authentication, testing, pagination, and SDK patterns.
 compatible_agents:
   - Claude Code

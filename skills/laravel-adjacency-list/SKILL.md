@@ -1,5 +1,5 @@
 ---
-name: Laravel Adjacency List
+name: laravel-adjacency-list
 description: Use staudenmeir/laravel-adjacency-list to build recursive tree and graph relationships in Laravel Eloquent using common table expressions (CTE) - ancestors, descendants, trees, nested results, depth, paths, cycle detection, and custom relationships.
 compatible_agents:
   - Claude Code
