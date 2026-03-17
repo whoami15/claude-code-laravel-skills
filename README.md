@@ -18,6 +18,7 @@ Each skill provides focused, practical guidance - complete with real code exampl
 |--------|-------------|
 | [saloon-for-laravel](skills/saloon-for-laravel/SKILL.md) | Build elegant API integrations with SaloonPHP - connectors, requests, responses, authentication, testing, pagination, caching, rate limiting, OAuth2, and SDK patterns |
 | [laravel-adjacency-list](skills/laravel-adjacency-list/SKILL.md) | Build recursive tree and graph relationships with Laravel Adjacency List - ancestors, descendants, trees, nested results, depth, paths, cycle detection, and custom relationships |
+| [payrex-laravel](skills/payrex-laravel/SKILL.md) | Integrate PayRex payment gateway (Philippines) into Laravel - cards, GCash, Maya, BillEase, QR Ph, BDO Installment, Payment Intents, Checkout Sessions, webhooks, billing statements, customer management, refunds, and testing |
 
 ## Contributing
 
@@ -32,7 +33,7 @@ Contributions are welcome! Whether it's:
 
 1. Create a new directory under `skills/` with your skill name
 2. Add a `SKILL.md` with YAML frontmatter (`name`, `description`) and markdown content
-3. Follow the structure of existing skills - see [saloon-for-laravel](saloon-for-laravel/SKILL.md) as a reference
+3. Follow the structure of existing skills - see [saloon-for-laravel](skills/saloon-for-laravel/SKILL.md) as a reference
 4. Open a pull request
 
 ### Skill Structure
