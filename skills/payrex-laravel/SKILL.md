@@ -1,6 +1,6 @@
 ---
 name: payrex-laravel
-description: Use when working with the legionhq/laravel-payrex package or when building PayRex paymentintegrations in Laravel. Covers accepting payments (cards, GCash, Maya, BillEase, QR Ph, BDO Installment), Payment Intents, Checkout Sessions, PayRex Elements, webhookhandling, billing statements/invoicing, customer management, refunds, error handling, and testing. Philippine payment gateway.
+description: Use when working with the legionhq/laravel-payrex package or when building PayRex payment integrations in Laravel. Covers accepting payments (cards, GCash, Maya, BillEase, QR Ph, BDO Installment), Payment Intents, Checkout Sessions, PayRex Elements, webhook handling, billing statements, customer management, refunds, error handling, and testing. Philippine payment gateway.
 compatible_agents:
   - Claude Code
   - Cursor
@@ -22,8 +22,9 @@ Use this skill when helping developers integrate the `legionhq/laravel-payrex` p
 
 **Package:** `legionhq/laravel-payrex`
 **Namespace:** `LegionHQ\LaravelPayrex\`
-**Requirements:** PHP 8.3+ · Laravel 11+
-**Docs:** https://payrex-laravel.netlify.app
+**Requirements:** PHP 8.2+ · Laravel 11+
+**Docs:** https://payrexlaravel.com
+**Demo:** https://payrex-laravel-demo-main-89yckp.free.laravel.cloud/login
 
 ## Installation
 
@@ -104,9 +105,9 @@ Payrex::checkoutSessions()->retrieve(string $id): CheckoutSession
 Payrex::checkoutSessions()->expire(string $id, ?string $idempotencyKey = null): CheckoutSession
 ```
 
-**Create params:** `line_items` (required, array of `{name, amount, quantity, description?, image?}`), `success_url` (required), `cancel_url` (required), `payment_methods`, `currency`, `customer_reference_id`, `description`, `expires_at`, `billing_details_collection`, `submit_type`, `statement_descriptor`, `payment_method_options`, `metadata`
+**Create params:** `line_items` (required, array of `{name, amount, quantity, description?, image?}`), `success_url` (required), `cancel_url` (required), `payment_methods`, `currency`, `customer_id`, `customer_reference_id`, `description`, `expires_at`, `billing_details_collection`, `submit_type` (`pay` or `donate`), `statement_descriptor`, `payment_method_options`, `metadata`
 
-**CheckoutSession properties:** `id`, `amount`, `clientSecret`, `currency`, `customerReferenceId`, `description`, `status` (CheckoutSessionStatus enum), `url` (redirect customer here), `lineItems` (array), `successUrl`, `cancelUrl`, `paymentIntent` (string|PaymentIntent), `paymentMethods` (array), `paymentMethodOptions` (array), `billingDetailsCollection`, `submitType`, `statementDescriptor`, `expiresAt`, `metadata`, `livemode`, `createdAt`, `updatedAt`
+**CheckoutSession properties:** `id`, `amount`, `clientSecret`, `currency`, `customerId`, `customer` (string|Customer), `customerReferenceId`, `description`, `status` (CheckoutSessionStatus enum), `url` (redirect customer here), `lineItems` (array), `successUrl`, `cancelUrl`, `paymentIntent` (string|PaymentIntent), `paymentMethods` (array), `paymentMethodOptions` (array), `billingDetailsCollection`, `submitType`, `statementDescriptor`, `expiresAt`, `metadata`, `livemode`, `createdAt`, `updatedAt`
 
 ### Payments
 
@@ -137,6 +138,7 @@ Payrex::refunds()->update(string $id, array $params): Refund
 ```php
 Payrex::customers()->create(array $params, ?string $idempotencyKey = null): Customer
 Payrex::customers()->list(array $params = []): PayrexCollection
+Payrex::customers()->paginate(int $perPage = 10, array $params = [], array $options = []): CursorPaginator
 Payrex::customers()->retrieve(string $id): Customer
 Payrex::customers()->update(string $id, array $params): Customer
 Payrex::customers()->delete(string $id): DeletedResource
@@ -150,9 +152,12 @@ Payrex::customers()->delete(string $id): DeletedResource
 
 ### Billing Statements
 
+Billing statements are one-time payment links that contain customer information, a due date, and an itemized list of products or services.
+
 ```php
 Payrex::billingStatements()->create(array $params, ?string $idempotencyKey = null): BillingStatement
 Payrex::billingStatements()->list(array $params = []): PayrexCollection
+Payrex::billingStatements()->paginate(int $perPage = 10, array $params = [], array $options = []): CursorPaginator
 Payrex::billingStatements()->retrieve(string $id): BillingStatement
 Payrex::billingStatements()->update(string $id, array $params): BillingStatement
 Payrex::billingStatements()->delete(string $id): DeletedResource
@@ -166,7 +171,7 @@ Payrex::billingStatements()->send(string $id, ?string $idempotencyKey = null): B
 
 **Update params:** `payment_settings` (required by PayRex API on every update), `customer_id`, `description`, `due_at`, `billing_details_collection`, `metadata`
 
-**Lifecycle:** `draft` → `open` (finalize) → `paid` | `void` | `uncollectible`
+**Lifecycle:** `draft` → `open` (finalize) → `paid` | `void` | `uncollectible` | `overdue`
 
 **BillingStatement properties:** `id`, `amount`, `currency`, `customerId`, `status` (BillingStatementStatus enum), `description`, `url` (available when open), `billingDetailsCollection`, `dueAt`, `lineItems` (array), `customer` (string|Customer), `paymentIntent` (string|PaymentIntent), `paymentSettings` (array), `metadata`, `livemode`, `createdAt`, `updatedAt`
 
@@ -188,15 +193,16 @@ Line items can only be modified while the billing statement is in `draft` status
 Payrex::payoutTransactions()->list(string $payoutId, array $params = []): PayrexCollection
 ```
 
-Read-only. First argument is the payout ID (`po_` prefix), unlike other list methods.
+Read-only. First argument is the payout ID (`po_` prefix), unlike other list methods. Does not support `paginate()`.
 
-**PayoutTransaction properties:** `id`, `amount`, `netAmount`, `transactionId`, `transactionType` (`payment`, `refund`, `adjustment`)
+**PayoutTransaction properties:** `id`, `amount`, `netAmount`, `transactionId`, `transactionType` (PayoutTransactionType enum — `payment`, `refund`, `adjustment`)
 
 ### Webhooks (API Resource)
 
 ```php
 Payrex::webhooks()->create(array $params, ?string $idempotencyKey = null): WebhookEndpoint
 Payrex::webhooks()->list(array $params = []): PayrexCollection
+Payrex::webhooks()->paginate(int $perPage = 10, array $params = [], array $options = []): CursorPaginator
 Payrex::webhooks()->retrieve(string $id): WebhookEndpoint
 Payrex::webhooks()->update(string $id, array $params): WebhookEndpoint
 Payrex::webhooks()->delete(string $id): DeletedResource
@@ -210,21 +216,26 @@ Payrex::webhooks()->disable(string $id, ?string $idempotencyKey = null): Webhook
 
 **WebhookEndpoint properties:** `id`, `secretKey`, `url`, `events` (array), `description`, `status` (WebhookEndpointStatus enum), `livemode`, `createdAt`, `updatedAt`
 
+### DeletedResource
+
+Returned by all `delete()` methods. Properties: `id`, `resource`, `deleted` (always `true`).
+
 ## Enums
 
 All in `LegionHQ\LaravelPayrex\Enums\`:
 
 ```
-PaymentMethod:        Card, GCash, Maya, BillEase, QrPh, BdoInstallment
-PaymentIntentStatus:  AwaitingPaymentMethod, AwaitingNextAction, AwaitingCapture, Processing, Succeeded, Canceled
-PaymentStatus:        Paid, Failed
+PaymentMethod:         Card, GCash, Maya, BillEase, QrPh, BdoInstallment
+PaymentIntentStatus:   AwaitingPaymentMethod, AwaitingNextAction, AwaitingCapture, Processing, Succeeded, Canceled
+PaymentStatus:         Paid, Failed
 CheckoutSessionStatus: Active, Completed, Expired
-RefundStatus:         Succeeded, Failed, Pending
-RefundReason:         Fraudulent, RequestedByCustomer, ProductOutOfStock, ServiceNotProvided, ProductWasDamaged, ServiceMisaligned, WrongProductReceived, Others
-BillingStatementStatus: Draft, Open, Paid, Void, Uncollectible
-PayoutStatus:         Pending, InTransit, Failed, Successful
+RefundStatus:          Succeeded, Failed, Pending
+RefundReason:          Fraudulent, RequestedByCustomer, ProductOutOfStock, ServiceNotProvided, ProductWasDamaged, ServiceMisaligned, WrongProductReceived, Others
+BillingStatementStatus: Draft, Open, Paid, Void, Uncollectible, Overdue
+PayoutStatus:          Pending, InTransit, Failed, Successful
+PayoutTransactionType: Payment, Refund, Adjustment
 WebhookEndpointStatus: Enabled, Disabled
-WebhookEventType:     PaymentIntentSucceeded, PaymentIntentAmountCapturable, CashBalanceFundsAvailable, CheckoutSessionExpired, PayoutDeposited, RefundCreated, RefundUpdated, BillingStatementCreated, BillingStatementUpdated, BillingStatementDeleted, BillingStatementFinalized, BillingStatementSent, BillingStatementMarkedUncollectible, BillingStatementVoided, BillingStatementPaid, BillingStatementWillBeDue, BillingStatementOverdue, BillingStatementLineItemCreated, BillingStatementLineItemUpdated, BillingStatementLineItemDeleted
+WebhookEventType:      PaymentIntentSucceeded, PaymentIntentAmountCapturable, CashBalanceFundsAvailable, CheckoutSessionExpired, PayoutDeposited, RefundCreated, RefundUpdated, BillingStatementCreated, BillingStatementUpdated, BillingStatementDeleted, BillingStatementFinalized, BillingStatementSent, BillingStatementMarkedUncollectible, BillingStatementVoided, BillingStatementPaid, BillingStatementWillBeDue, BillingStatementOverdue, BillingStatementLineItemCreated, BillingStatementLineItemUpdated, BillingStatementLineItemDeleted
 ```
 
 Pass enum values in API calls with `->value`:
@@ -243,7 +254,7 @@ if ($paymentIntent->status === PaymentIntentStatus::Succeeded) { ... }
 
 ### Built-in Route (Recommended)
 
-Set `PAYREX_WEBHOOK_ENABLED=true` and `PAYREX_WEBHOOK_SECRET` in `.env`. The package registers a POST route at the configured path (default: `/payrex/webhook`) with HMAC-SHA256 signature verification.
+Set `PAYREX_WEBHOOK_ENABLED=true` in `.env`. The package registers a POST route at the configured path (default: `/payrex/webhook`) with signature verification. To change the path, set `PAYREX_WEBHOOK_PATH`.
 
 Listen for events in `AppServiceProvider::boot()`:
 
@@ -257,6 +268,41 @@ Event::listen(PaymentIntentSucceeded::class, function ($event) {
     $isLive = $event->isLiveMode();    // bool
     $raw = $event->payload;            // array (full raw payload)
 });
+```
+
+### Custom Route with Built-in Controller
+
+If you need to add middleware (e.g., rate limiting, logging) to the webhook route, disable the built-in route (`PAYREX_WEBHOOK_ENABLED=false`) and register your own. Signature verification and event dispatching work the same:
+
+```php
+use LegionHQ\LaravelPayrex\Http\Controllers\WebhookController;
+use LegionHQ\LaravelPayrex\Middleware\VerifyWebhookSignature;
+
+Route::post('my/webhook', WebhookController::class)
+    ->middleware(VerifyWebhookSignature::class);
+```
+
+### Custom Controller with constructEvent()
+
+For full control over webhook handling (e.g., multi-tenant setups with per-tenant secrets, or custom processing logic):
+
+```php
+use LegionHQ\LaravelPayrex\Exceptions\WebhookVerificationException;
+use LegionHQ\LaravelPayrex\Facades\Payrex;
+
+public function __invoke(Request $request): Response
+{
+    try {
+        $event = Payrex::constructEvent(
+            payload: $request->getContent(),
+            signatureHeader: $request->header('Payrex-Signature'),
+            secret: $tenantSecret,     // optional, defaults to config
+            tolerance: 300,            // optional, seconds
+        );
+    } catch (WebhookVerificationException $e) {
+        return response('Invalid signature', 403);
+    }
+}
 ```
 
 ### Available Event Classes
@@ -283,34 +329,31 @@ class FulfillOrder implements ShouldQueue
 }
 ```
 
-### Custom Controller with constructEvent()
+### Idempotent Webhook Handling
 
-For multi-tenant or custom routing:
-
-```php
-use LegionHQ\LaravelPayrex\Exceptions\WebhookVerificationException;
-use LegionHQ\LaravelPayrex\Facades\Payrex;
-
-try {
-    $event = Payrex::constructEvent(
-        payload: $request->getContent(),
-        signatureHeader: $request->header('Payrex-Signature'),
-        secret: $tenantSecret,     // optional, defaults to config
-        tolerance: 300,            // optional, seconds
-    );
-} catch (WebhookVerificationException $e) {
-    return response('Invalid signature', 403);
-}
-```
-
-### Custom Route with Built-in Controller
+Webhooks may be delivered more than once. Use a transaction + unique constraint to deduplicate:
 
 ```php
-use LegionHQ\LaravelPayrex\Http\Controllers\WebhookController;
-use LegionHQ\LaravelPayrex\Middleware\VerifyWebhookSignature;
+use Illuminate\Database\UniqueConstraintViolationException;
 
-Route::post('my/webhook', WebhookController::class)
-    ->middleware(VerifyWebhookSignature::class);
+Event::listen(PaymentIntentSucceeded::class, function ($event) {
+    $eventId = $event->payload['id'];
+
+    try {
+        DB::transaction(function () use ($event, $eventId) {
+            DB::table('processed_webhook_events')->insert([
+                'event_id' => $eventId,
+                'processed_at' => now(),
+            ]);
+
+            $paymentIntent = $event->data();
+            Order::where('payment_intent_id', $paymentIntent->id)
+                ->update(['status' => 'paid']);
+        });
+    } catch (UniqueConstraintViolationException) {
+        // Already processed — skip
+    }
+});
 ```
 
 ## Billable Customer Trait
@@ -337,7 +380,19 @@ $user->payrexCustomerId(): ?string
 $user->hasPayrexCustomerId(): bool
 ```
 
-**Override-friendly methods:** `payrexCustomerName()`, `payrexCustomerEmail()`, `payrexCustomerIdColumn()`
+**Override-friendly methods:** `payrexCustomerName()`, `payrexCustomerEmail()`, `payrexCustomerIdColumn()`, `payrexClient()`
+
+Override `payrexClient()` for multi-tenant setups where each user/tenant has their own API key:
+
+```php
+protected function payrexClient(): PayrexClient
+{
+    return new PayrexClient(
+        secretKey: $this->team->payrex_secret_key,
+        currency: $this->team->currency ?? 'PHP',
+    );
+}
+```
 
 Throws `LogicException` if `createAsPayrexCustomer()` is called on a model that already has a PayRex customer ID.
 
@@ -355,7 +410,7 @@ PayrexException (base)
 
 All in `LegionHQ\LaravelPayrex\Exceptions\`.
 
-**PayrexApiException properties:** `$e->errors` (array), `$e->statusCode` (int), `$e->body` (array), `$e->getMessage()` (first error detail)
+**PayrexApiException properties:** `$exception->errors` (array), `$exception->statusCode` (int), `$exception->body` (array), `$exception->getMessage()` (first error detail)
 
 ```php
 use LegionHQ\LaravelPayrex\Exceptions\InvalidRequestException;
@@ -363,9 +418,9 @@ use LegionHQ\LaravelPayrex\Exceptions\PayrexApiException;
 
 try {
     Payrex::paymentIntents()->create([...]);
-} catch (InvalidRequestException $e) {
-    // 400 — $e->errors has validation details
-} catch (PayrexApiException $e) {
+} catch (InvalidRequestException $exception) {
+    // 400 — $exception->errors has validation details
+} catch (PayrexApiException $exception) {
     // Any other API error
     $requestId = Payrex::getLastResponse()?->header('X-Request-Id');
 }
@@ -373,24 +428,44 @@ try {
 
 ## Pagination
 
-Resources with `list()`: Customers, Billing Statements, Payout Transactions, Webhooks.
+Resources with `list()` and `paginate()`: Customers, Billing Statements, Webhooks. Payout Transactions only support `list()`.
+
+### Manual Pagination with list()
 
 ```php
-// Basic
 $customers = Payrex::customers()->list(['limit' => 10]);
 $customers->data;     // array of Customer DTOs
 $customers->hasMore;  // bool
 
-// Auto-pagination (lazy — fetches pages on demand)
-$all = Payrex::customers()->list(['limit' => 100])->autoPaginate();
-foreach ($all as $customer) { ... }
-
-// With safety limit
-$all = Payrex::customers()->list()->autoPaginate(maxPages: 50);
+// Next page
+if ($customers->hasMore) {
+    $lastId = end($customers->data)->id;
+    $next = Payrex::customers()->list(['limit' => 10, 'after' => $lastId]);
+}
 
 // Use list() as a lookup
 $customers = Payrex::customers()->list(['email' => 'juan@example.com']);
 $customer = $customers->data[0] ?? null;
+```
+
+### Cursor Pagination with paginate()
+
+Returns a Laravel `CursorPaginator` with automatic cursor resolution from the request:
+
+```php
+// One-liner — reads ?cursor= from request automatically
+$customers = Payrex::customers()->paginate(perPage: 10);
+
+// With filters
+$customers = Payrex::customers()->paginate(
+    perPage: 10,
+    params: ['name' => 'Juan'],
+);
+
+// With Inertia
+return Inertia::render('Customers/Index', [
+    'customers' => Payrex::customers()->paginate(10)->withQueryString(),
+]);
 ```
 
 **Filter support:** Customers (`name`, `email`, `metadata`), Webhooks (`url`, `description`).
@@ -437,7 +512,7 @@ return response()->json([
 ]);
 ```
 
-Frontend uses PayRex JS SDK (`https://js.payrexhq.com`) or `payrex-js` npm package with `PAYREX_PUBLIC_KEY`.
+Frontend uses PayRex JS SDK (`https://js.payrexhq.com`) or `payrex-js` npm package with `PAYREX_PUBLIC_KEY`. Use `finally` block to reset loading state after `attachPaymentMethod()` — covers errors, exceptions, and successful redirects.
 
 ### Hold then Capture (Card Only)
 
@@ -458,7 +533,7 @@ $pi = Payrex::paymentIntents()->retrieve('pi_xxxxx');
 
 // 3. Capture (full or partial, one-time only)
 $pi = Payrex::paymentIntents()->capture('pi_xxxxx', [
-    'amount' => 10000,  // Must be ≤ amountCapturable
+    'amount' => 10000,  // Must be <= amountCapturable
 ]);
 ```
 
@@ -493,10 +568,10 @@ Payrex::billingStatementLineItems()->create([
     'quantity' => 2,
 ]);
 
-// 3. Set due date
+// 3. Set due date (payment_settings required on every update)
 Payrex::billingStatements()->update($stmt->id, [
     'due_at' => now()->addDays(30)->timestamp,
-    'payment_settings' => ['payment_methods' => ['card', 'gcash']],
+    'payment_settings' => $stmt['payment_settings'] ?? [],
 ]);
 
 // 4. Finalize (generates payment URL)
@@ -532,31 +607,15 @@ $pi = Payrex::paymentIntents()->create([
     'amount' => 10000,
     'payment_methods' => ['card'],
 ]);
-
-// Test webhook listeners
-use LegionHQ\LaravelPayrex\Events\PaymentIntentSucceeded;
-
-PaymentIntentSucceeded::dispatch([
-    'id' => 'evt_test_123',
-    'type' => 'payment_intent.succeeded',
-    'livemode' => false,
-    'data' => [
-        'resource' => [
-            'id' => 'pi_test_456',
-            'resource' => 'payment_intent',
-            'amount' => 10000,
-        ],
-    ],
-    'created_at' => now()->timestamp,
-    'updated_at' => now()->timestamp,
-]);
 ```
 
-**Artisan command for testing webhooks locally:**
+**Artisan command for testing webhook listeners locally:**
 
 ```bash
 php artisan payrex:webhook-test payment_intent.succeeded
 ```
+
+Dispatches a synthetic webhook event with resource-specific fields, correct ID prefixes, and timestamps. Both the typed event and `WebhookReceived` catch-all are dispatched.
 
 ## Key Rules
 
@@ -568,3 +627,5 @@ php artisan payrex:webhook-test payment_intent.succeeded
 - Always use **webhooks** for order fulfillment, not return/success URLs
 - `payment_methods` is optional — defaults to all enabled methods on the merchant's PayRex account
 - Idempotency keys are supported on all `create()` and action methods via `idempotencyKey:` named parameter
+- `payment_settings` is required on every billing statement `update()` call per the PayRex API
+- Use `$exception` not `$e` in catch blocks
